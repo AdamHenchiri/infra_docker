@@ -1,0 +1,61 @@
+version: "3.0"
+
+services:
+  web:
+    image: alexcheng/magento
+    ports:
+      - "5080:80"
+    links:
+      - db
+    environment:
+      - MAGENTO_LOCALE=en_GB
+      - MAGENTO_TIMEZONE=Pacific/Auckland
+      - MAGENTO_DEFAULT_CURRENCY=NZD
+      - MAGENTO_URL=http://magento.local
+      - MAGENTO_ADMIN_FIRSTNAME=Admin
+      - MAGENTO_ADMIN_LASTNAME=MyStore
+      - MAGENTO_ADMIN_EMAIL=amdin@example.com
+      - MAGENTO_ADMIN_USERNAME=admin
+      - MAGENTO_ADMIN_PASSWORD=magentorocks1
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+              level:
+    networks:
+      - external
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.magento-web.rule=Host(`magento.local`)"
+      - "traefik.http.routers.magento-web.entrypoints=web"
+      - "traefik.http.services.magento.loadbalancer.server.port=80"
+  db:
+    image: mysql:5.6.23
+    volumes:
+      - db-data:/var/lib/mysql/data
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_ROOT_PASSWORD=myrootpassword
+      - MYSQL_USER=magento
+      - MYSQL_PASSWORD=magento
+      - MYSQL_DATABASE=magento
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+              level:
+
+volumes:
+  db-data:
+
+networks:
+  external:
+    external: true
