@@ -1,0 +1,62 @@
+version: "2"
+
+services:
+  matomo:
+    image: matomo
+    container_name: matomo
+    ports:
+      - 8081:80
+    environment:
+      - MATOMO_DATABASE_HOST=matomo_db
+      - VIRTUAL_HOST=stats.mysite.ext
+      - LETSENCRYPT_HOST=stats.mysite.ext
+      - LETSENCRYPT_EMAIL=email@something.ext
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.matomo-web.rule=Host(`matomo.local`)"
+      - "traefik.http.routers.matomo-web.entrypoints=web"
+      - "traefik.http.services.matomo.loadbalancer.server.port=80"
+
+    networks:
+      - external
+    depends_on:
+      - matomo_db
+    restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+
+  matomo_db:
+    container_name: matomo_db
+    image: mariadb
+    command: --max-allowed-packet=64MB
+    environment:
+      - MYSQL_ROOT_PASSWORD=makeitup
+      - MYSQL_PASSWORD=makeitup2
+      - MYSQL_DATABASE=matomo
+      - MYSQL_USER=matomo
+      - MATOMO_DATABASE_ADAPTER=mysql
+      - MATOMO_DATABASE_TABLES_PREFIX=matomo_
+      - MATOMO_DATABASE_USERNAME=matomo
+      - MATOMO_DATABASE_PASSWORD=
+      - MATOMO_DATABASE_DBNAME=matomo
+    networks:
+      - external
+    restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+
+networks:
+  external:
+    external: true
