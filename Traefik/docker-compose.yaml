@@ -12,13 +12,13 @@ services:
       - "81:80"
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - external
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik-web.rule=Host(`traefik.local`)"
+      - "traefik.http.routers.traefik-web.rule=Host(`app.local`)"
       - "traefik.http.routers.traefik-web.entrypoints=web"
       - "traefik.http.services.traefik.loadbalancer.server.port=8080"
 
@@ -31,7 +31,7 @@ services:
         loki-url: http://127.0.0.1:3100/loki/api/v1/push
         loki-pipeline-stages: |
           - regex:
-              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+              expression: '(level|lvl|severity)=(?P<level>\w+)'
           - labels:
               level:
 
