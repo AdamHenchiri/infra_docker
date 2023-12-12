@@ -1,0 +1,61 @@
+version: "3.3"
+
+services:
+  ghost:
+    image: ghost:latest
+    restart: always
+    ports:
+      - "2368:2368"
+    depends_on:
+      - db
+    environment:
+      url: http://ghost.local
+      database__client: mysql
+      database__connection__host: db
+      database__connection__user: ghost
+      database__connection__password: ghostdbpass
+      database__connection__database: ghostdb
+    volumes:
+      - /home/ghost/content:/var/lib/ghost/content
+    networks:
+      - external
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+              level:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ghost-web.rule=Host(`ghost.local`)"
+      - "traefik.http.routers.ghost-web.entrypoints=web"
+      - "traefik.http.services.ghost.loadbalancer.server.port=2368"
+
+  db:
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: your_mysql_root_password
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghostdbpass
+      MYSQL_DATABASE: ghostdb
+    volumes:
+      - /home/ghost/mysql:/var/lib/mysql
+    networks:
+      - external
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+              level:
+
+networks:
+  external:
+    external: true
