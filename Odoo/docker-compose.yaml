@@ -1,0 +1,67 @@
+version: '3'
+
+services:
+
+  odoo:
+    image: odoo:15.0
+    environment:
+      - HOST=postgres
+      - USER=odoo
+      - PASSWORD=a_strong_password_for_user
+    depends_on:
+      - postgres
+    ports:
+      - "8069:8069"
+    volumes:
+      - data:/var/lib/odoo
+    networks:
+      - external
+
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+              level:
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.odoo-web.rule=Host(`odoo.local`)"
+      - "traefik.http.routers.odoo-web.entrypoints=web"
+      - "traefik.http.services.odoo.loadbalancer.server.port=8069"
+
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=a_strong_password_for_user
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    networks:
+      - external
+
+    volumes:
+      - db:/var/lib/postgresql/data/pgdata
+
+    logging:
+      driver: loki
+      options:
+        loki-url: http://127.0.0.1:3100/loki/api/v1/push
+        loki-pipeline-stages: |
+          - regex:
+              expression: ’(level|lvl|severity)=(?P<level>\w+)’
+          - labels:
+              level:
+
+
+volumes:
+  data:
+  db:
+
+networks:
+  external:
+    external: true
